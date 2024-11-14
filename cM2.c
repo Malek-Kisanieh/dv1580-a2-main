@@ -13,7 +13,7 @@ void *memset(void*,int,size_t);
 void *memmove(void *to, const void *from, size_t size);
 
 /*=========================================================
- * interception points
+ * interception points.
  */
 
 static void * (*myfn_calloc)(size_t nmemb, size_t size);
