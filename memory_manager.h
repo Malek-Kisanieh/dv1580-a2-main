@@ -3,7 +3,7 @@
 
 #include <stddef.h> // For size_t
 
-// Helps C++ compilers to handle C header files
+// Helps C++ compilers to handle C header filesaa
 #ifdef __cplusplus
 extern "C"
 {
