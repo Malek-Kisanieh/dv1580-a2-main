@@ -29,63 +29,6 @@ pthread_mutex_t list_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // Function implementations...
 
-void list_insert_before(Node** head, Node* next_node, uint16_t data) {
-    pthread_mutex_lock(&list_mutex);
-
-    if (*head == NULL || next_node == NULL) {
-        printf("Cannot insert before a NULL node\n");
-        pthread_mutex_unlock(&list_mutex);
-        return;
-    }
-
-    Node* new_node = (Node*)mem_alloc(sizeof(Node));
-    if (!new_node) {
-        printf("Memory allocation failed\n");
-        pthread_mutex_unlock(&list_mutex);
-        return;
-    }
-
-    new_node->data = data;
-
-    if (*head == next_node) {
-        new_node->next = *head;
-        *head = new_node;
-    } else {
-        Node* current = *head;
-        while (current->next != next_node && current->next != NULL) {
-            current = current->next;
-        }
-        if (current->next == next_node) {
-            new_node->next = next_node;
-            current->next = new_node;
-        } else {
-            printf("Next node not found in the list\n");
-            mem_free(new_node);
-        }
-    }
-
-    pthread_mutex_unlock(&list_mutex);
-}
-
-void list_display_range(Node* head, size_t start, size_t end) {
-    pthread_mutex_lock(&list_mutex);
-
-    size_t index = 0;
-    printf("[");
-    while (head != NULL && index <= end) {
-        if (index >= start) {
-            printf("%u", head->data);
-            if (index < end && head->next != NULL) {
-                printf(", ");
-            }
-        }
-        head = head->next;
-        index++;
-    }
-    printf("]\n");
-
-    pthread_mutex_unlock(&list_mutex);
-}
 // Initializes the linked list and memory manager
 void list_init(Node** head, size_t size) {
     pthread_mutex_lock(&list_mutex);
@@ -196,7 +139,63 @@ void list_display(Node** head) {
 
     pthread_mutex_unlock(&list_mutex);
 }
+void list_insert_before(Node** head, Node* next_node, uint16_t data) {
+    pthread_mutex_lock(&list_mutex);
 
+    if (*head == NULL || next_node == NULL) {
+        printf("Cannot insert before a NULL node\n");
+        pthread_mutex_unlock(&list_mutex);
+        return;
+    }
+
+    Node* new_node = (Node*)mem_alloc(sizeof(Node));
+    if (!new_node) {
+        printf("Memory allocation failed\n");
+        pthread_mutex_unlock(&list_mutex);
+        return;
+    }
+
+    new_node->data = data;
+
+    if (*head == next_node) {
+        new_node->next = *head;
+        *head = new_node;
+    } else {
+        Node* current = *head;
+        while (current->next != next_node && current->next != NULL) {
+            current = current->next;
+        }
+        if (current->next == next_node) {
+            new_node->next = next_node;
+            current->next = new_node;
+        } else {
+            printf("Next node not found in the list\n");
+            mem_free(new_node);
+        }
+    }
+
+    pthread_mutex_unlock(&list_mutex);
+}
+
+void list_display_range(Node* head, size_t start, size_t end) {
+    pthread_mutex_lock(&list_mutex);
+
+    size_t index = 0;
+    printf("[");
+    while (head != NULL && index <= end) {
+        if (index >= start) {
+            printf("%u", head->data);
+            if (index < end && head->next != NULL) {
+                printf(", ");
+            }
+        }
+        head = head->next;
+        index++;
+    }
+    printf("]\n");
+
+    pthread_mutex_unlock(&list_mutex);
+}
 // Cleans up the list and deallocates all memory
 void list_cleanup(Node** head) {
     pthread_mutex_lock(&list_mutex);
