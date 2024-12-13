@@ -31,7 +31,7 @@ void mem_init(size_t pool_size) {
     }
 
     total_pool_size = pool_size;
-    max_metadata = pool_size * 0.2; // 20% of the pool size for metadata
+    max_metadata = pool_size * 0.2;
 
     pool_head = malloc(sizeof(MemBlock));
     if (!pool_head) {
@@ -47,53 +47,38 @@ void mem_init(size_t pool_size) {
     metadata_used = sizeof(MemBlock);
 }
 
+// Function to allocate memory safely
 void* mem_alloc(size_t size) {
-    printf("Requesting %zu bytes\n", size);
+    if (!size) return NULL;
+
     pthread_mutex_lock(&mem_lock);
-
-    defragment_memory_pool();  // Defragment memory pool before allocation
-
     MemBlock* current = pool_head;
-    while (current != NULL) {
-        printf("Block: size=%zu, is_available=%d\n", current->block_size, current->is_available);
+
+    while (current) {
         if (current->is_available && current->block_size >= size) {
+            // Split the block if sufficient space remains for another block
             if (current->block_size > size + sizeof(MemBlock)) {
-                MemBlock* new_block = malloc(sizeof(MemBlock));
-                if (!new_block) {
-                    pthread_mutex_unlock(&mem_lock);
-                    return NULL;
-                }
-
-                metadata_used += sizeof(MemBlock);
-                if (metadata_used > max_metadata) {
-                    free(new_block);
-                    pthread_mutex_unlock(&mem_lock);
-                    printf("Allocation failed for %zu bytes: metadata limit exceeded\n", size);
-                    return NULL;
-                }
-
+                MemBlock* new_block = (MemBlock*)((char*)current->data_ptr + size);
                 new_block->block_size = current->block_size - size - sizeof(MemBlock);
                 new_block->is_available = 1;
-                new_block->data_ptr = (void*)((char*)current->data_ptr + size);
+                new_block->data_ptr = (void*)((char*)current->data_ptr + size + sizeof(MemBlock));
                 new_block->next_block = current->next_block;
 
                 current->block_size = size;
                 current->is_available = 0;
                 current->next_block = new_block;
             } else {
-                current->is_available = 0;
+                current->is_available = 0; // Mark as used
             }
 
             pthread_mutex_unlock(&mem_lock);
-            printf("Allocated %zu bytes at %p\n", size, current->data_ptr);
             return current->data_ptr;
         }
         current = current->next_block;
     }
 
     pthread_mutex_unlock(&mem_lock);
-    printf("Allocation failed for %zu bytes: no suitable block found\n", size);
-    return NULL;
+    return NULL; // No suitable block found
 }
 
 // Function to free allocated memory safely
@@ -107,12 +92,14 @@ void mem_free(void* ptr) {
         if (current->data_ptr == ptr) {
             current->is_available = 1;
 
-            // Coalesce with the next block if available
-            while (current->next_block && current->next_block->is_available) {
-                MemBlock* next = current->next_block;
+            // Coalesce with the next block if it is available
+            MemBlock* next = current->next_block;
+            while (next && next->is_available) {
                 current->block_size += next->block_size + sizeof(MemBlock);
                 current->next_block = next->next_block;
+                free(next);
                 metadata_used -= sizeof(MemBlock);
+                next = current->next_block;
             }
             break;
         }
@@ -125,10 +112,6 @@ void mem_free(void* ptr) {
 // Function to resize allocated memory safely
 void* mem_resize(void* ptr, size_t size) {
     if (!ptr) return mem_alloc(size);
-    if (size == 0) {
-        mem_free(ptr);
-        return NULL;
-    }
 
     pthread_mutex_lock(&mem_lock);
 
@@ -172,20 +155,4 @@ void mem_deinit() {
     total_pool_size = 0;
     metadata_used = 0;
     max_metadata = 0;
-}
-void defragment_memory_pool() {
-    pthread_mutex_lock(&mem_lock);
-    MemBlock* current = pool_head;
-    while (current != NULL && current->next_block != NULL) {
-        if (current->is_available && current->next_block->is_available) {
-            MemBlock* next = current->next_block;
-            current->block_size += next->block_size + sizeof(MemBlock);
-            current->next_block = next->next_block;
-            free(next);
-            metadata_used -= sizeof(MemBlock);
-        } else {
-            current = current->next_block;
-        }
-    }
-    pthread_mutex_unlock(&mem_lock);
 }
