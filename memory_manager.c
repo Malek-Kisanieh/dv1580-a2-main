@@ -166,4 +166,5 @@ void mem_deinit() {
     total_pool_size = 0;
 
     pthread_mutex_unlock(&memory_lock);
+    pthread_mutex_destroy(&memory_lock);
 }
