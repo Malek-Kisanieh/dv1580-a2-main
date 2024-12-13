@@ -19,6 +19,7 @@
 
 #include "gitdata.h"
 
+
 my_barrier_t barrier; // Declare our custom barrier
 
 // Data structure to pass arguments to threads
