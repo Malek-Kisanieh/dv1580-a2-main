@@ -24,6 +24,11 @@ Node* list_search(Node* head, uint16_t data) {
     }
     return NULL; // Data not found
 }
+// Global mutex for thread synchronization
+pthread_mutex_t list_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// Function implementations...
+
 void list_insert_before(Node** head, Node* next_node, uint16_t data) {
     pthread_mutex_lock(&list_mutex);
 
@@ -42,7 +47,7 @@ void list_insert_before(Node** head, Node* next_node, uint16_t data) {
 
     new_node->data = data;
 
-    if (*head == next_node) { // If the next_node is the head
+    if (*head == next_node) {
         new_node->next = *head;
         *head = new_node;
     } else {
@@ -61,6 +66,7 @@ void list_insert_before(Node** head, Node* next_node, uint16_t data) {
 
     pthread_mutex_unlock(&list_mutex);
 }
+
 void list_display_range(Node* head, size_t start, size_t end) {
     pthread_mutex_lock(&list_mutex);
 
@@ -80,10 +86,6 @@ void list_display_range(Node* head, size_t start, size_t end) {
 
     pthread_mutex_unlock(&list_mutex);
 }
-
-// Mutex for thread synchronization
-pthread_mutex_t list_mutex = PTHREAD_MUTEX_INITIALIZER;
-
 // Initializes the linked list and memory manager
 void list_init(Node** head, size_t size) {
     pthread_mutex_lock(&list_mutex);
