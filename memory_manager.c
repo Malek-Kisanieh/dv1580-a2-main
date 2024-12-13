@@ -20,6 +20,9 @@ static size_t metadata_used = 0;
 static size_t max_metadata = 0;
 static pthread_mutex_t mem_lock;
 
+// Align memory to 8 bytes
+#define ALIGN(size) (((size) + 7) & ~7)
+
 // Function to initialize the memory manager
 void mem_init(size_t pool_size) {
     pthread_mutex_init(&mem_lock, NULL);
@@ -49,26 +52,37 @@ void mem_init(size_t pool_size) {
 
 // Function to allocate memory safely
 void* mem_alloc(size_t size) {
-    if (!size) return NULL;
-
     pthread_mutex_lock(&mem_lock);
+
+    size = ALIGN(size);
     MemBlock* current = pool_head;
 
-    while (current) {
+    while (current != NULL) {
         if (current->is_available && current->block_size >= size) {
-            // Split the block if sufficient space remains for another block
             if (current->block_size > size + sizeof(MemBlock)) {
-                MemBlock* new_block = (MemBlock*)((char*)current->data_ptr + size);
+                MemBlock* new_block = malloc(sizeof(MemBlock));
+                if (!new_block) {
+                    pthread_mutex_unlock(&mem_lock);
+                    return NULL;
+                }
+
+                metadata_used += sizeof(MemBlock);
+                if (metadata_used > max_metadata) {
+                    free(new_block);
+                    pthread_mutex_unlock(&mem_lock);
+                    return NULL;
+                }
+
                 new_block->block_size = current->block_size - size - sizeof(MemBlock);
                 new_block->is_available = 1;
-                new_block->data_ptr = (void*)((char*)current->data_ptr + size + sizeof(MemBlock));
+                new_block->data_ptr = (void*)((char*)current->data_ptr + size);
                 new_block->next_block = current->next_block;
 
                 current->block_size = size;
                 current->is_available = 0;
                 current->next_block = new_block;
             } else {
-                current->is_available = 0; // Mark as used
+                current->is_available = 0;
             }
 
             pthread_mutex_unlock(&mem_lock);
@@ -78,7 +92,7 @@ void* mem_alloc(size_t size) {
     }
 
     pthread_mutex_unlock(&mem_lock);
-    return NULL; // No suitable block found
+    return NULL;
 }
 
 // Function to free allocated memory safely
