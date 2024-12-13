@@ -5,6 +5,11 @@
 #include "memory_manager.h" // Include your custom memory manager
 #include <stdint.h>
 #include <pthread.h>
+size_t list_count_nodes(Node* head);
+Node* list_search(Node* head, uint16_t data);
+void list_insert_before(Node** head, Node* next_node, uint16_t data);
+void list_display_range(Node* head, size_t start, size_t end);
+
 typedef struct Node
 {
     uint16_t data;     // Stores the data as an unsigned 16-bit integer
