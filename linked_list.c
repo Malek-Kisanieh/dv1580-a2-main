@@ -7,6 +7,10 @@ typedef struct Node {
     uint16_t data;
     struct Node* next;
 } Node;
+// Global mutex for thread synchronization
+pthread_mutex_t list_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_rwlock_t list_rwlock = PTHREAD_RWLOCK_INITIALIZER; // Read-Write lock for read-heavy functions.
+
 size_t list_count_nodes(Node* head) {
     size_t count = 0;
     while (head != NULL) {
@@ -16,16 +20,17 @@ size_t list_count_nodes(Node* head) {
     return count;
 }
 Node* list_search(Node* head, uint16_t data) {
+    pthread_rwlock_rdlock(&list_rwlock);
     while (head != NULL) {
         if (head->data == data) {
+            pthread_rwlock_unlock(&list_rwlock);
             return head;
         }
         head = head->next;
     }
+    pthread_rwlock_unlock(&list_rwlock);
     return NULL; // Data not found
 }
-// Global mutex for thread synchronization
-pthread_mutex_t list_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // Function implementations...
 
@@ -124,7 +129,7 @@ void list_delete(Node** head, uint16_t data) {
 
 // Displays the elements of the list
 void list_display(Node** head) {
-    pthread_mutex_lock(&list_mutex);
+    pthread_rwlock_rdlock(&list_rwlock);
 
     Node* current = *head;
     printf("[");
@@ -137,7 +142,7 @@ void list_display(Node** head) {
     }
     printf("]\n");
 
-    pthread_mutex_unlock(&list_mutex);
+    pthread_rwlock_unlock(&list_rwlock);
 }
 void list_insert_before(Node** head, Node* next_node, uint16_t data) {
     pthread_mutex_lock(&list_mutex);
@@ -178,7 +183,7 @@ void list_insert_before(Node** head, Node* next_node, uint16_t data) {
 }
 
 void list_display_range(Node* head, size_t start, size_t end) {
-    pthread_mutex_lock(&list_mutex);
+    pthread_rwlock_rdlock(&list_rwlock);
 
     size_t index = 0;
     printf("[");
@@ -194,7 +199,7 @@ void list_display_range(Node* head, size_t start, size_t end) {
     }
     printf("]\n");
 
-    pthread_mutex_unlock(&list_mutex);
+    pthread_rwlock_unlock(&list_rwlock);
 }
 // Cleans up the list and deallocates all memory
 void list_cleanup(Node** head) {
@@ -208,6 +213,5 @@ void list_cleanup(Node** head) {
     }
     *head = NULL;
     mem_deinit();
-
     pthread_mutex_unlock(&list_mutex);
 }
